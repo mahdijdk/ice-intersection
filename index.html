@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>هشدار یخ‌زدگی تقاطع</title>
+<style>
+  body { font-family: Tahoma, sans-serif; margin: 0; background: #1c1c1e; color: white; }
+  .top { display: flex; justify-content: space-between; padding: 12px 20px; background: #000; font-size: 18px; }
+  #banner { text-align: center; padding: 30px 15px; margin: 15px; border-radius: 20px; background: #424242; }
+  #banner.ice { background: #c62828; animation: pulse 1.2s infinite; }
+  #banner.warn { background: #ef6c00; }
+  #banner.safe { background: #2e7d32; }
+  #banner.off { background: #616161; }
+  #icon { font-size: 80px; }
+  #msg { font-size: 36px; font-weight: bold; margin: 10px 0; }
+  #sub { font-size: 22px; }
+  .content { display: grid; grid-template-columns: 1fr; gap: 15px; padding: 0 15px 15px 15px; }
+  .panel { background: #2c2c2e; border-radius: 16px; padding: 15px; }
+  .panel h2 { margin: 0 0 10px 0; font-size: 22px; }
+  .card { background: #3a3a3c; border-radius: 10px; padding: 10px 15px; margin-bottom: 10px; font-size: 18px; }
+  .place { font-size: 20px; font-weight: bold; }
+  #altPanel { display: none; border: 3px solid #4caf50; }
+  #altText { font-size: 22px; }
+  .note { font-size: 14px; color: #bbb; margin-top: 10px; }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.8); }
+    100% { box-shadow: 0 0 0 30px rgba(255, 255, 255, 0); }
+  }
+  @media (min-width: 800px) {
+    .content { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div>سامانه هشدار یخ‌زدگی تقاطع</div>
+  <div id="clock"></div>
+</div>
+
+<div id="banner" class="off">
+  <div id="icon">⏳</div>
+  <div id="msg">در حال اتصال...</div>
+  <div id="sub"></div>
+</div>
+
+<div class="content">
+  <div class="panel">
+    <h2>وضعیت تقاطع</h2>
+    <svg viewBox="0 0 300 300" style="width:100%; max-width:350px; display:block; margin:auto;">
+      <rect x="0" y="0" width="300" height="300" fill="#1c1c1e"/>
+      <rect id="arm-north" x="120" y="30" width="60" height="90" fill="#757575"/>
+      <rect id="arm-south" x="120" y="180" width="60" height="90" fill="#757575"/>
+      <rect id="arm-east" x="180" y="120" width="80" height="60" fill="#757575"/>
+      <rect id="arm-west" x="40" y="120" width="80" height="60" fill="#757575"/>
+      <rect x="120" y="120" width="60" height="60" fill="#555"/>
+      <text x="150" y="20" fill="white" font-size="16" text-anchor="middle">شمال</text>
+      <text x="150" y="292" fill="white" font-size="16" text-anchor="middle">جنوب</text>
+      <text x="296" y="156" fill="white" font-size="16" text-anchor="end">شرق</text>
+      <text x="4" y="156" fill="white" font-size="16" text-anchor="start">غرب</text>
+    </svg>
+    <div class="note" id="age"></div>
+  </div>
+
+  <div>
+    <div class="panel" id="altPanel">
+      <h2>مسیر جایگزین (نمایشی)</h2>
+      <div id="altText"></div>
+      <div class="note">این بخش فعلاً فقط نمایشی است و مسیریابی واقعی انجام نمی‌دهد.</div>
+    </div>
+    <div class="panel" style="margin-top:15px;">
+      <h2>سنسورها</h2>
+      <div id="list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const dirNames = { north: "شمال", south: "جنوب", east: "شرق", west: "غرب" };
+const colors = { 0: "#2e7d32", 1: "#ef6c00", 2: "#c62828", 3: "#9e9e9e" };
+const statusTexts = { 0: "امن", 1: "احتمال یخ‌زدگی", 2: "یخ‌زده است", 3: "ارتباط قطع است" };
+
+function showBanner(cls, icon, msg, sub) {
+  document.getElementById("banner").className = cls;
+  document.getElementById("icon").textContent = icon;
+  document.getElementById("msg").textContent = msg;
+  document.getElementById("sub").textContent = sub;
+}
+
+function addLine(parent, text, cls) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  if (cls) div.className = cls;
+  parent.appendChild(div);
+}
+
+function getStatus(s) {
+  if (s.age > 30) {
+    return 3;
+  }
+  return s.status;
+}
+
+async function update() {
+  document.getElementById("clock").textContent = new Date().toLocaleTimeString("fa-IR");
+  const altPanel = document.getElementById("altPanel");
+
+  try {
+    const res = await fetch("/data");
+    const data = await res.json();
+    const list = document.getElementById("list");
+    list.innerHTML = "";
+
+    let armStatus = {};
+    for (const d in dirNames) {
+      armStatus[d] = -1;
+      document.getElementById("arm-" + d).setAttribute("fill", "#757575");
+    }
+
+    let iceList = [];
+    let warnList = [];
+    let offCount = 0;
+    let total = 0;
+    let minAge = null;
+
+    for (const id in data) {
+      const s = data[id];
+      const st = getStatus(s);
+      let label = s.place;
+      total = total + 1;
+
+      if (dirNames[s.direction]) {
+        label = s.place + " - ورودی " + dirNames[s.direction];
+        armStatus[s.direction] = st;
+        document.getElementById("arm-" + s.direction).setAttribute("fill", colors[st]);
+      }
+
+      if (st == 2) {
+        iceList.push(label);
+      } else if (st == 1) {
+        warnList.push(label);
+      } else if (st == 3) {
+        offCount = offCount + 1;
+      }
+
+      if (minAge == null || s.age < minAge) {
+        minAge = s.age;
+      }
+
+      const card = document.createElement("div");
+      card.className = "card";
+      card.style.borderRight = "8px solid " + colors[st];
+      addLine(card, label, "place");
+      addLine(card, "وضعیت: " + statusTexts[st]);
+      addLine(card, "دمای سطح: " + s.temp + " درجه | رطوبت: " + s.moisture + " درصد");
+      list.appendChild(card);
+    }
+
+    if (minAge != null) {
+      document.getElementById("age").textContent = "آخرین دریافت داده: " + minAge + " ثانیه پیش";
+    }
+
+    if (iceList.length > 0 || warnList.length > 0) {
+      let safeArms = [];
+      for (const d in dirNames) {
+        if (armStatus[d] == 0) {
+          safeArms.push(dirNames[d]);
+        }
+      }
+      if (safeArms.length > 0) {
+        document.getElementById("altText").textContent = "ورودی‌های امن: " + safeArms.join("، ") + ". از یکی از این مسیرها عبور کنید.";
+      } else {
+        document.getElementById("altText").textContent = "مسیر امنی ثبت نشده است. با احتیاط و سرعت کم عبور کنید.";
+      }
+      altPanel.style.display = "block";
+    } else {
+      altPanel.style.display = "none";
+    }
+
+    if (total == 0) {
+      showBanner("off", "⏳", "در انتظار داده از سنسور", "");
+    } else if (iceList.length > 0) {
+      showBanner("ice", "❄️", "خطر! یخ‌زدگی", iceList.join("، "));
+    } else if (warnList.length > 0) {
+      showBanner("warn", "⚠️", "هشدار: احتمال یخ‌زدگی", warnList.join("، "));
+    } else if (offCount > 0) {
+      showBanner("off", "📡", "ارتباط " + offCount + " سنسور قطع است", "");
+    } else {
+      showBanner("safe", "✅", "تقاطع امن است", "یخ‌زدگی‌ای گزارش نشده است");
+    }
+  } catch (e) {
+    altPanel.style.display = "none";
+    showBanner("off", "📡", "ارتباط با سرور قطع است", "اتصال شبکه را بررسی کنید");
+  }
+}
+
+update();
+setInterval(update, 3000);
+</script>
+</body>
+</html>
