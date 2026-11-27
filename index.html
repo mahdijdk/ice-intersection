@@ -64,7 +64,7 @@
       <span><i style="background:#ffb020"></i>هشدار</span>
       <span><i style="background:#ff4d4d"></i>یخ‌زده</span>
       <span><i style="background:#4fd1ff"></i>مسیر شما</span>
-      <span><i style="background:#56697c"></i>مسیر جایگزین</span>
+      <span id="legAlt" style="display:none"><i style="background:#56697c"></i>مسیر جایگزین</span>
     </div>
   </div>
 
@@ -123,6 +123,11 @@ function pts(list) {
 
 function drawArms(arms) {
   let s = '<defs><marker id="ah1" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="3.5" markerHeight="3.5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#4fd1ff"/></marker><marker id="ah2" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="3.5" markerHeight="3.5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#56697c"/></marker></defs>';
+  let showAlt = false;
+  for (const a of arms) {
+    if (a[1] == 1 || a[1] == 2) showAlt = true;
+  }
+  document.getElementById("legAlt").style.display = showAlt ? "inline" : "none";
   for (const a of arms) {
     if (a[0] == "center") {
       s += '<g class="' + (a[1] == 2 ? "pulse" : "") + '"><circle cx="0" cy="0" r="80" fill="' + colors[a[1]] + '" fill-opacity="0.3" stroke="' + colors[a[1]] + '" stroke-width="5"/></g>';
@@ -131,7 +136,9 @@ function drawArms(arms) {
       s += '<line x1="0" y1="0" x2="' + p[0] + '" y2="' + p[1] + '" stroke="' + colors[a[1]] + '" stroke-width="16" stroke-linecap="round" stroke-opacity="0.85"/>';
     }
   }
-  s += '<polyline points="' + pts(ALT) + '" fill="none" stroke="#56697c" stroke-opacity="0.9" stroke-width="7" stroke-dasharray="18 14" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ah2)"/>';
+  if (showAlt) {
+    s += '<polyline points="' + pts(ALT) + '" fill="none" stroke="#56697c" stroke-opacity="0.9" stroke-width="7" stroke-dasharray="18 14" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ah2)"/>';
+  }
   s += '<polyline points="' + pts(ROUTE) + '" fill="none" stroke="#4fd1ff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ah1)"/>';
   s += '<circle cx="0" cy="0" r="11" fill="#0b1d2e" stroke="#fff" stroke-width="5"/>';
   for (const a of arms) {
@@ -162,7 +169,7 @@ function setState(cls, icon, msg, sub) {
 }
 
 function getStatus(s) {
-  if (s.age > 30) {
+  if (s.age > 45) {
     return 3;
   }
   return s.status;
@@ -192,12 +199,21 @@ function drawChart(history, color) {
   document.getElementById("ch-risk").setAttribute("stroke", color);
 }
 
+let failCount = 0;
+let busy = false;
+
 async function update() {
+  if (busy) return;
+  busy = true;
   document.getElementById("clock").textContent = new Date().toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" });
 
   try {
-    const res = await fetch("/data");
+    const ctrl = new AbortController();
+    const timer = setTimeout(function () { ctrl.abort(); }, 8000);
+    const res = await fetch("/data", { signal: ctrl.signal, cache: "no-store" });
+    clearTimeout(timer);
     const data = await res.json();
+    failCount = 0;
     const chips = document.getElementById("chips");
     chips.innerHTML = "";
 
@@ -284,13 +300,17 @@ async function update() {
       setState("s-safe", "✅", "مسیر امن است", "یخ‌زدگی‌ای گزارش نشده است");
     }
   } catch (e) {
-    setState("s-off", "📡", "ارتباط با سرور قطع است", "اتصال شبکه را بررسی کنید");
+    failCount = failCount + 1;
+    if (failCount >= 3) {
+      setState("s-off", "📡", "ارتباط با سرور قطع است", "اتصال شبکه را بررسی کنید");
+    }
   }
+  busy = false;
 }
 
 drawArms([]);
 update();
-setInterval(update, 3000);
+setInterval(update, 2000);
 </script>
 </body>
 </html>
