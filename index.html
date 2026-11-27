@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>سامانه هشدار یخ‌زدگی مسیر</title>
+<title>سامانه هشدار لغزندگی مسیر</title>
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; font-family: "Segoe UI", Tahoma, sans-serif; color: #eaf4fb; background: linear-gradient(160deg, #06121d 0%, #0d2a40 55%, #14405a 100%); --c: #8aa0b2; --tint: rgba(138,160,178,0.25); }
@@ -51,7 +51,7 @@
 
 <div class="bar">
   <div class="side1"><span id="dot"></span><span class="lbl">ساعت</span><span id="clock"></span></div>
-  <div class="title">سامانه هشدار یخ‌زدگی مسیر</div>
+  <div class="title">سامانه هشدار لغزندگی مسیر</div>
   <div class="side2"><span id="place"></span><span id="age"></span><button class="exit" onclick="exitApp()">خروج</button></div>
 </div>
 
@@ -62,7 +62,7 @@
     <div class="legend">
       <span><i style="background:#35d0a0"></i>امن</span>
       <span><i style="background:#ffb020"></i>هشدار</span>
-      <span><i style="background:#ff4d4d"></i>یخ‌زده</span>
+      <span><i style="background:#ff4d4d"></i>لغزنده</span>
       <span><i style="background:#4fd1ff"></i>مسیر شما</span>
       <span id="legAlt" style="display:none"><i style="background:#56697c"></i>مسیر جایگزین</span>
     </div>
@@ -81,7 +81,7 @@
   </div>
 
   <div class="panel wide">
-    <h2><i style="background:#ff7ab6"></i>میزان یخ‌زدگی <span id="risk">--</span><span id="riskText"></span></h2>
+    <h2><i style="background:#ff7ab6"></i>میزان لغزندگی <span id="risk">--</span><span id="riskText"></span></h2>
     <svg viewBox="0 0 640 236" style="width:100%; height:auto;">
       <rect x="50" y="10" width="540" height="60" fill="#ff4d4d" fill-opacity="0.12"/>
       <rect x="50" y="70" width="540" height="60" fill="#ffb020" fill-opacity="0.1"/>
@@ -327,13 +327,13 @@ async function update() {
     if (total == 0) {
       setState("s-off", "⏳", "در انتظار داده از سنسور", "");
     } else if (iceList.length > 0) {
-      setState("s-ice", "❄️", "خطر! یخ‌زدگی", iceList.join("، "));
+      setState("s-ice", "❄️", "خطر! لغزندگی", iceList.join("، "));
     } else if (warnList.length > 0) {
-      setState("s-warn", "⚠️", "هشدار: احتمال یخ‌زدگی", warnList.join("، "));
+      setState("s-warn", "⚠️", "هشدار: احتمال لغزندگی", warnList.join("، "));
     } else if (offCount > 0) {
       setState("s-off", "📡", "ارتباط " + offCount + " سنسور قطع است", "");
     } else {
-      setState("s-safe", "✅", "مسیر امن است", "یخ‌زدگی‌ای گزارش نشده است");
+      setState("s-safe", "✅", "مسیر امن است", "لغزندگی‌ای گزارش نشده است");
     }
   } catch (e) {
     failCount = failCount + 1;
