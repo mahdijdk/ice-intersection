@@ -82,22 +82,21 @@
 
   <div class="panel wide">
     <h2><i style="background:#ff7ab6"></i>میزان یخ‌زدگی <span id="risk">--</span><span id="riskText"></span></h2>
-    <svg viewBox="0 0 600 212" style="width:100%; height:auto;">
-      <rect x="40" y="10" width="550" height="60" fill="#ff4d4d" fill-opacity="0.12"/>
-      <rect x="40" y="70" width="550" height="60" fill="#ffb020" fill-opacity="0.1"/>
-      <rect x="40" y="130" width="550" height="60" fill="#35d0a0" fill-opacity="0.1"/>
-      <line x1="40" y1="10" x2="590" y2="10" stroke="#fff" stroke-opacity="0.15"/>
-      <line x1="40" y1="100" x2="590" y2="100" stroke="#fff" stroke-opacity="0.15"/>
-      <line x1="40" y1="190" x2="590" y2="190" stroke="#fff" stroke-opacity="0.3"/>
-      <text x="34" y="14" font-size="12" fill="#9fc2d8" text-anchor="end">100</text>
-      <text x="34" y="104" font-size="12" fill="#9fc2d8" text-anchor="end">50</text>
-      <text x="34" y="194" font-size="12" fill="#9fc2d8" text-anchor="end">0</text>
+    <svg viewBox="0 0 640 236" style="width:100%; height:auto;">
+      <rect x="50" y="10" width="540" height="60" fill="#ff4d4d" fill-opacity="0.12"/>
+      <rect x="50" y="70" width="540" height="60" fill="#ffb020" fill-opacity="0.1"/>
+      <rect x="50" y="130" width="540" height="60" fill="#35d0a0" fill-opacity="0.1"/>
+      <line x1="50" y1="10" x2="590" y2="10" stroke="#fff" stroke-opacity="0.15"/>
+      <line x1="50" y1="100" x2="590" y2="100" stroke="#fff" stroke-opacity="0.15"/>
+      <line x1="50" y1="190" x2="590" y2="190" stroke="#fff" stroke-opacity="0.4"/>
+      <text x="26" y="14" font-size="13" fill="#9fc2d8" text-anchor="middle">100</text>
+      <text x="26" y="104" font-size="13" fill="#9fc2d8" text-anchor="middle">50</text>
+      <text x="26" y="194" font-size="13" fill="#9fc2d8" text-anchor="middle">0</text>
+      <g id="ch-ticks"></g>
       <path id="ch-area" fill="#8aa0b2" fill-opacity="0.25"/>
       <path id="ch-risk" fill="none" stroke="#8aa0b2" stroke-width="3.5" stroke-linejoin="round"/>
-      <text id="ch-msg" x="315" y="105" text-anchor="middle" font-size="16" fill="#9fc2d8"></text>
+      <text id="ch-msg" x="320" y="105" text-anchor="middle" font-size="16" fill="#9fc2d8"></text>
       <circle id="ch-dot" r="7" cx="-20" cy="-20" fill="#fff" stroke="#8aa0b2" stroke-width="3"/>
-      <text id="ch-left" x="40" y="207" font-size="12" fill="#9fc2d8"></text>
-      <text x="590" y="207" font-size="12" fill="#9fc2d8" text-anchor="end">اکنون</text>
     </svg>
   </div>
 </div>
@@ -190,6 +189,21 @@ function pointRisk(p) {
   return iceRisk(p.t, p.m);
 }
 
+function drawTicks(win) {
+  const now = Date.now();
+  let s = "";
+  for (let i = 0; i <= 4; i++) {
+    const x = 50 + i * 135;
+    const t = new Date(now - win * 1000 * (1 - i / 4));
+    const opts = win <= 150 ? { hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" } : { hour: "2-digit", minute: "2-digit", hourCycle: "h23" };
+    s += '<line x1="' + x + '" y1="10" x2="' + x + '" y2="190" stroke="#fff" stroke-opacity="0.08"/>';
+    s += '<line x1="' + x + '" y1="190" x2="' + x + '" y2="197" stroke="#fff" stroke-opacity="0.5"/>';
+    s += '<text x="' + x + '" y="214" font-size="14" fill="#cfe3f1" text-anchor="middle">' + t.toLocaleTimeString("fa-IR", opts) + '</text>';
+  }
+  s += '<text x="590" y="232" font-size="13" fill="#9fc2d8" text-anchor="middle">اکنون</text>';
+  document.getElementById("ch-ticks").innerHTML = s;
+}
+
 function drawChart(history, color) {
   let win = 60;
   for (const p of history) {
@@ -198,7 +212,7 @@ function drawChart(history, color) {
   let points = [];
   for (const p of history) {
     if (p.a > 600) continue;
-    points.push([40 + (1 - p.a / win) * 550, 190 - pointRisk(p) * 1.8]);
+    points.push([50 + (1 - p.a / win) * 540, 190 - pointRisk(p) * 1.8]);
   }
   let area = "";
   if (points.length > 1) {
@@ -208,7 +222,6 @@ function drawChart(history, color) {
   document.getElementById("ch-area").setAttribute("fill", color);
   document.getElementById("ch-risk").setAttribute("d", toPath(points));
   document.getElementById("ch-risk").setAttribute("stroke", color);
-  document.getElementById("ch-left").textContent = win < 120 ? Math.round(win) + " ثانیه پیش" : Math.round(win / 60) + " دقیقه پیش";
   document.getElementById("ch-msg").textContent = points.length < 2 ? "در حال جمع‌آوری داده..." : "";
   const dot = document.getElementById("ch-dot");
   if (points.length > 0) {
@@ -219,6 +232,7 @@ function drawChart(history, color) {
   } else {
     dot.setAttribute("cx", -20);
   }
+  drawTicks(win);
 }
 
 let failCount = 0;
